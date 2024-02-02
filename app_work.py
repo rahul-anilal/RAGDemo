@@ -37,13 +37,15 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    Create a conversational chain by analysing the transcript that has been uploaded.Analsye the script of each person.If the question asked is not related, "answer is not available in the context", don't provide the wrong answer\n\n
+    Analyze the conversation thoroughly, considering each participant's input, and provide a comprehensive response. If specific details are not available, indicate "Information not found in the context." Avoid guessing or providing inaccurate information. If the required details are not in the meeting context, you may search the internet for factual information.\n\n
+
     Context:\n {context}?\n
     Question: \n{question}\n
 
-    Answer:
+    Detailed Answer:
     """
-    model  = ChatGoogleGenerativeAI(model = "gemini-pro", temperature = 0.3)
+
+    model  = ChatGoogleGenerativeAI(model = "gemini-pro", temperature = 0.6)
     prompt = PromptTemplate(template = prompt_template, input_variables = ["context", "question"])
     chain  = load_qa_chain(model, chain_type = "stuff", prompt = prompt)
     return chain
