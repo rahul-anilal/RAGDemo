@@ -17,18 +17,13 @@ load_dotenv()
 
 genai.configure(api_key = os.getenv("GOOGLE_API_KEY"))
 
-'''def get_pdf_text(pdf_docs):
+def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
         pdf_reader = PdfReader(pdf)
         for page in pdf_reader.pages:
             text+=page.extract_text()
-    return text'''
-
-def text_extract(link):
-     transcript_text = link.read().decode("utf-8")
-     return  transcript_text
-        
+    return text
 
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
@@ -42,8 +37,7 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    Answer the question as detailed as possible from the provided context, make sure to provide all the details, if the answer is not in
-    provided context just say, "answer is not available in the context", don't provide the wrong answer\n\n
+    Create a conversational chain by analysing the transcript that has been uploaded.Analsye the script of each person.If the question asked is not related, "answer is not available in the context", don't provide the wrong answer\n\n
     Context:\n {context}?\n
     Question: \n{question}\n
 
@@ -83,7 +77,7 @@ def main():
         pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
         if st.button("Submit & Process"):
             with st.spinner("Processing..."):
-                raw_text    = text_extract(pdf_docs)
+                raw_text    = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(raw_text)
                 get_vector_store(text_chunks)
                 st.success("Done")
