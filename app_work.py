@@ -65,6 +65,22 @@ def user_input(user_question):
     print(response)
     st.write("Reply: ", response["output_text"])
 
+def get_ques(question):
+    embeddings   = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
+
+    new_db = FAISS.load_local("faiss_index", embeddings)
+    docs   = new_db.similarity_search(question)
+
+    chain  = get_conversational_chain()
+
+    response = chain(
+        {"input_documents":docs, "question": question}
+        , return_only_outputs=True)
+    
+    print(response)
+    st.sidebar.text("Recommended Questions :")
+    st.sidebar.text(response["output_text"])
+
 def main():
     st.set_page_config("PDFCHAT")
     st.header("Chat with PDF using Gemini💁")
@@ -82,6 +98,7 @@ def main():
                 raw_text    = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(raw_text)
                 get_vector_store(text_chunks)
+                get_ques("what are the questions that can be asked for the meeting")
                 st.success("Done")
 
 if __name__ == "__main__":
