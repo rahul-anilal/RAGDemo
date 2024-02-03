@@ -4,15 +4,14 @@ import time
 import random
 
 st.set_page_config(
-    page_title="Chat with Gemini Pro",
-    page_icon="🔥"
+    page_title="ChatBot for answering your questions",
+    page_icon="👩‍🏫"
 )
 
-st.title("Chat with Gemini Pro")
+st.title("Ask your questions here")
 st.caption("A Chatbot Powered by Google Gemini Pro")
-
 if "app_key" not in st.session_state:
-    app_key = st.text_input("Please enter your Gemini API Key", type='password')
+    app_key = "AIzaSyCM6t_MHgoZ2kGz44A8oI_r7SdNDJoCLXk"
     if app_key:
         st.session_state.app_key = app_key
 

@@ -2,6 +2,9 @@ import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
+import random
+import time
+import subprocess
 
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
@@ -78,28 +81,38 @@ def get_ques(question):
         , return_only_outputs=True)
     
     print(response)
-    st.sidebar.text("Recommended Questions :")
-    st.sidebar.text(response["output_text"])
+    return response
+
+@st.cache_data
+def get_sidebar_text():
+    response = get_ques("what are the top 5 questions that can be asked for the meeting")
+    return response["output_text"]
+
+def gpt_pop_up():
+    subprocess.Popen(["streamlit", "run", "query.py"])
 
 def main():
-    st.set_page_config("PDFCHAT")
-    st.header("Chat with PDF using Gemini💁")
+    st.set_page_config("MEETBOT")
+    st.header("MeetBot - A Solution to ask your questions regarding a Meeting🤖")
 
-    user_question = st.text_input("Ask a Question from the PDF Files")
+    user_question = st.text_input("Ask a Question from the Transcript Files")
 
     if user_question:
         user_input(user_question)
 
     with st.sidebar:
         st.title("Menu:")
-        pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
+        pdf_docs = st.file_uploader("Upload your Transcript Files and Click on the Submit & Process Button", accept_multiple_files=True)
         if st.button("Submit & Process"):
             with st.spinner("Processing..."):
                 raw_text    = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(raw_text)
                 get_vector_store(text_chunks)
-                get_ques("what are the questions that can be asked for the meeting")
-                st.success("Done")
-
+                sidebar_text = get_sidebar_text()
+                st.sidebar.text(sidebar_text)
+        sidebar_text = get_sidebar_text()
+        st.sidebar.text(sidebar_text)
+        if st.button("Ask your questions here"):
+            gpt_pop_up()
 if __name__ == "__main__":
     main()
