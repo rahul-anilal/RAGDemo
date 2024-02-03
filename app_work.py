@@ -1,5 +1,5 @@
 import streamlit as st
-import PyPDF2
+from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
 import random
@@ -20,20 +20,17 @@ load_dotenv()
 
 genai.configure(api_key = os.getenv("GOOGLE_API_KEY"))
 
-def read_pdf(file_path):
+def get_pdf_text(pdf_docs):
     text = ""
-    with open(file_path, 'rb') as file:
-        pdf_reader = PyPDF2.PdfReader(file)
-        for page_num in range(len(pdf_reader.pages)):
-            page = pdf_reader.pages[page_num]
-            text += page.extract_text()
-        print(text)
-        return text
-    
+    for pdf in pdf_docs:
+        pdf_reader = PdfReader(pdf)
+        for page in pdf_reader.pages:
+            text+=page.extract_text()
+    return text
+
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     chunks        = text_splitter.split_text(text)
-    print(chunks)
     return chunks
 
 def get_vector_store(text_chunks):
@@ -105,10 +102,10 @@ def main():
 
     with st.sidebar:
         st.title("Menu:")
-        file_path = "C:/Users/hp/Downloads/Transcipt.pdf"
+        pdf_docs = st.file_uploader("Upload your Transcript Files and Click on the Submit & Process Button", accept_multiple_files=True)
         if st.button("Submit & Process"):
             with st.spinner("Processing..."):
-                raw_text    = read_pdf(file_path)
+                raw_text    = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(raw_text)
                 get_vector_store(text_chunks)
                 sidebar_text = get_sidebar_text()
@@ -117,6 +114,5 @@ def main():
         st.sidebar.text(sidebar_text)
         if st.button("Ask your questions here"):
             gpt_pop_up()
-
 if __name__ == "__main__":
     main()
