@@ -77,22 +77,22 @@ def get_ques(question):
 
     chain  = get_conversational_chain()
 
-    #response = chain(
-        #{"input_documents":docs, "question": question}
-        #, return_only_outputs=True)
+    response = chain(
+        {"input_documents":docs, "question": question}
+        , return_only_outputs=True)
     
-    response = "1.What is discussed about gemini pro?\n2.What is the problem statement?\n3.What are the societal impacts?\n4.what is the general workflow\n5.What are the possible problems that were discussed?\n6.What are the possible advantages?"
+    #response = "1.What is discussed about gemini pro?\n2.What is the problem statement?\n3.What are the societal impacts?\n4.what is the general workflow\n5.What are the possible problems that were discussed?\n6.What are the possible advantages?"
     print(response)
     return response
 
 @st.cache_data
 def get_sidebar_text():
-    response = get_ques("what relevant questions are asked?")
+    response = get_ques("frame some questions that can be asked")
     #response = get_ques("what are the important topics covered in the meeting")
     #response = get_ques("what are some of the most general important questions from the meet, make sure to ask a minimum of 3 and maximum of 5")
     #response = get_ques("Please analyze my recent team meeting transcript and provide insightful questions that delve into the key discussion points, uncover potential action items, and identify areas for further clarification or exploration.")
-    #return response["output_text"]
-    return response
+    return response["output_text"]
+    #return response
 
 def gpt_pop_up():
     subprocess.Popen(["streamlit", "run", "query.py"])
