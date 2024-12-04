@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+#Add your API key here
 genai.configure(api_key = os.getenv("GOOGLE_API_KEY"))
 
 def get_pdf_text(pdf_docs):
