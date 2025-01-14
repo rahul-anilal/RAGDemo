@@ -19,26 +19,45 @@ This project introduces an interactive conversational agent, using Large Languag
 
 ## Installation
 
-1.Clone this repository to your local machine using:
+1. Clone this repository to your local machine using:
 
 ```bash
   git clone https://github.com/Skriller18/MeetBot.git
 ```
-2.Navigate to the project directory:
+2. Navigate to the project directory:
 
 ```bash
   cd MeetBot
 ```
-3.Create Environment:
-
+3. Create Environment:
 ```bash
   conda create -n "myenv" python=3.10.0
 ```
+
 4. Install the required dependencies using pip:
 
 ```bash
   pip install -r requirements.txt
 ```
+5. Install docker
+
+```bash
+  sudo apt-get install docker
+  sudo apt-get install docker-compose
+```
+
+6. Initialize the docker server
+
+```bash
+docker-compose up -d
+```
+
+7. Check docker status
+
+```bash
+docker ps
+```
+
 5.Acquire an api key through makersuite.google.com and put it in a .env file:
 
 ```bash
@@ -48,7 +67,12 @@ This project introduces an interactive conversational agent, using Large Languag
 
 ## Usage
 
-1. Run the Streamlit app by executing:
+1. Run the Kafka Consumer client
+```bash
+python consumer_service.py
+```
+
+2. In a paralell terminal, Run the Streamlit app by executing:
 ```bash
 streamlit run app_work.py
 ```
