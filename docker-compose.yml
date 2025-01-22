@@ -18,6 +18,8 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_CREATE_TOPICS: "transcript_uploads:1:1"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_MESSAGE_MAX_BYTES: 15728640
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 15728640
     depends_on:
       - zookeeper
     networks:

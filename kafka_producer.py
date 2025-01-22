@@ -1,5 +1,6 @@
 # kafka_producer.py
 from confluent_kafka import Producer
+from monitor import MonitoringProducer
 import json
 import base64
 import os
@@ -11,12 +12,16 @@ class TranscriptProducer:
             'bootstrap.servers': bootstrap_servers,
             'client.id': 'transcript-producer',
             'socket.timeout.ms': 10000,
-            'request.timeout.ms': 20000
+            'request.timeout.ms': 20000,
+            'message.max.bytes': 15728640  # Add this line (15MB)
+
         })
         self.topics = {
             'pdf': 'transcript_uploads',
             'realtime': 'realtime_transcripts'
         }
+        self.monitoring = MonitoringProducer(bootstrap_servers)
+
 
     def delivery_report(self, err, msg):
         if err is not None:
@@ -26,6 +31,13 @@ class TranscriptProducer:
 
     def send_transcript(self, file_obj):
         try:
+            file_id = str(uuid.uuid4())
+            self.monitoring.send_status_update(
+                file_id=file_id,
+                status="UPLOADING",
+                details={"filename": file_obj.name}
+            )
+
             file_content = base64.b64encode(file_obj.read()).decode('utf-8')
             file_data = {
                 'filename': file_obj.name,
@@ -38,10 +50,21 @@ class TranscriptProducer:
                 callback=self.delivery_report
             )
             self.producer.flush()
-            return True
+
+            self.monitoring.send_status_update(
+                file_id=file_id,
+                status="UPLOADED",
+                details={"filename": file_obj.name}
+            )
+            return True, file_id
+        
         except Exception as e:
-            print(f"Error sending to Kafka: {str(e)}")
-            return False
+            self.monitoring.send_status_update(
+                file_id=file_id,
+                status="FAILED",
+                details={"error": str(e)}
+            )
+            return False, None
             
     def send_realtime_chunk(self, text_chunk, session_id=None):
         try:

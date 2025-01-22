@@ -1,5 +1,6 @@
 # kafka_consumer.py
 from confluent_kafka import Consumer, KafkaError
+from monitor import MonitoringProducer, TranscriptAnalytics
 import json
 import base64
 from io import BytesIO
@@ -31,6 +32,8 @@ class TranscriptConsumer:
             chunk_size=10000,
             chunk_overlap=1000
         )
+        self.monitoring = MonitoringProducer(bootstrap_servers)
+        self.analytics = TranscriptAnalytics()
         
     def load_or_create_vectorstore(self):
         try:
@@ -38,22 +41,51 @@ class TranscriptConsumer:
         except:
             return None
             
-    def process_pdf_transcript(self, file_content):
-        file_obj = BytesIO(base64.b64decode(file_content))
-        pdf_reader = PdfReader(file_obj)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text()
+    def process_pdf_transcript(self, file_content, file_id):
+        try:
+            self.monitoring.send_status_update(
+                file_id=file_id,
+                status="PROCESSING",
+                details={"stage": "text_extraction"}
+            )
             
-        text_chunks = self.text_splitter.split_text(text)
-        vector_store = self.load_or_create_vectorstore()
-        
-        if vector_store is None:
-            vector_store = FAISS.from_texts(text_chunks, embedding=self.embeddings)
-        else:
-            vector_store.add_texts(text_chunks)
+            # Extract text from PDF
+            text = self.extract_text(file_content)
             
-        vector_store.save_local("faiss_index")
+            # Perform analytics
+            analytics_data = self.analytics.analyze_transcript(text)
+            self.monitoring.send_analytics(analytics_data)
+            
+            self.monitoring.send_status_update(
+                file_id=file_id,
+                status="PROCESSING",
+                details={"stage": "generating_embeddings"}
+            )
+            
+            # Generate embeddings and update vector store
+            text_chunks = self.text_splitter.split_text(text)
+            vector_store = self.load_or_create_vectorstore()
+            
+            if vector_store is None:
+                vector_store = FAISS.from_texts(text_chunks, embedding=self.embeddings)
+            else:
+                vector_store.add_texts(text_chunks)
+                
+            vector_store.save_local("faiss_index")
+            
+            self.monitoring.send_status_update(
+                file_id=file_id,
+                status="COMPLETED",
+                details={"analytics": analytics_data}
+            )
+            
+        except Exception as e:
+            self.monitoring.send_status_update(
+                file_id=file_id,
+                status="FAILED",
+                details={"error": str(e)}
+            )
+            raise e
         
     def process_realtime_transcript(self, text_chunk, session_id):
         text_chunks = self.text_splitter.split_text(text_chunk)
@@ -93,7 +125,7 @@ class TranscriptConsumer:
                     
                     if msg.topic() == 'transcript_uploads':
                         print(f"Processing PDF file: {data['filename']}")
-                        self.process_pdf_transcript(data['content'])
+                        self.process_pdf_transcript(data['content'], data['file_id'])
                         print(f"Successfully processed file: {data['filename']}")
                     else:  # realtime_transcripts topic
                         print(f"Processing realtime transcript chunk for session: {data['session_id']}")
