@@ -1,3 +1,4 @@
+# main.py
 import streamlit as st
 from kafka_producer import TranscriptProducer
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
@@ -37,18 +38,23 @@ def main():
     st.set_page_config("MEETBOT")
     st.header("MeetBot - A Solution to ask your questions regarding a Meeting🤖")
 
+    if 'realtime_session_id' not in st.session_state:
+        st.session_state.realtime_session_id = None
+
     user_question = st.text_input("Ask a Question from the Transcript Files")
     if user_question:
         user_input(user_question)
 
     with st.sidebar:
         st.title("Menu:")
+        
+        st.subheader("Upload Transcripts")
         pdf_docs = st.file_uploader(
             "Upload your Transcript Files and Click on the Submit & Process Button",
             accept_multiple_files=True
         )
         
-        if st.button("Submit & Process"):
+        if st.button("Submit & Process PDFs"):
             producer = TranscriptProducer()
             with st.spinner("Processing..."):
                 for pdf in pdf_docs:
@@ -56,6 +62,25 @@ def main():
                         st.success(f"Successfully sent {pdf.name} for processing")
                     else:
                         st.error(f"Failed to process {pdf.name}")
+        
+        # Realtime transcription section
+        st.subheader("Realtime Transcription")
+        realtime_text = st.text_area("Enter text chunk for realtime processing")
+        
+        if st.button("Process Realtime Text"):
+            if realtime_text:
+                producer = TranscriptProducer()
+                with st.spinner("Processing realtime text..."):
+                    session_id = producer.send_realtime_chunk(
+                        realtime_text,
+                        st.session_state.realtime_session_id
+                    )
+                    
+                    if session_id:
+                        st.session_state.realtime_session_id = session_id
+                        st.success("Successfully processed realtime text chunk")
+                    else:
+                        st.error("Failed to process realtime text chunk")
 
 if __name__ == "__main__":
     main()

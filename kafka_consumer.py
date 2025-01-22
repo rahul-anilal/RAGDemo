@@ -1,3 +1,4 @@
+# kafka_consumer.py
 from confluent_kafka import Consumer, KafkaError
 import json
 import base64
@@ -24,31 +25,52 @@ class TranscriptConsumer:
             'session.timeout.ms': 60000,
             'request.timeout.ms': 30000
         })
-        self.topic = 'transcript_uploads'
+        self.topics = ['transcript_uploads', 'realtime_transcripts']
+        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=10000,
+            chunk_overlap=1000
+        )
         
-    def process_transcript(self, file_content):
+    def load_or_create_vectorstore(self):
+        try:
+            return FAISS.load_local("faiss_index", self.embeddings, allow_dangerous_deserialization=True)
+        except:
+            return None
+            
+    def process_pdf_transcript(self, file_content):
         file_obj = BytesIO(base64.b64decode(file_content))
         pdf_reader = PdfReader(file_obj)
         text = ""
         for page in pdf_reader.pages:
             text += page.extract_text()
             
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=10000,
-            chunk_overlap=1000
-        )
-        text_chunks = text_splitter.split_text(text)
+        text_chunks = self.text_splitter.split_text(text)
+        vector_store = self.load_or_create_vectorstore()
         
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings, allow_dangerous_deserialization=True)
+        if vector_store is None:
+            vector_store = FAISS.from_texts(text_chunks, embedding=self.embeddings)
+        else:
+            vector_store.add_texts(text_chunks)
+            
         vector_store.save_local("faiss_index")
+        
+    def process_realtime_transcript(self, text_chunk, session_id):
+        text_chunks = self.text_splitter.split_text(text_chunk)
+        vector_store = self.load_or_create_vectorstore()
+        
+        if vector_store is None:
+            vector_store = FAISS.from_texts(text_chunks, embedding=self.embeddings)
+        else:
+            vector_store.add_texts(text_chunks)
+            
+        vector_store.save_local("faiss_index")
+        print(f"Updated vector store with new text chunk from session {session_id}")
         
     def start_consuming(self):
         print("Starting to consume messages...")
-        
-        # Subscribe to topic
-        self.consumer.subscribe([self.topic])
-        print(f"Subscribed to topic: {self.topic}")
+        self.consumer.subscribe(self.topics)
+        print(f"Subscribed to topics: {self.topics}")
         
         try:
             while True:
@@ -67,10 +89,16 @@ class TranscriptConsumer:
 
                 try:
                     print("Received message, processing...")
-                    file_data = json.loads(msg.value().decode('utf-8'))
-                    print(f"Processing file: {file_data['filename']}")
-                    self.process_transcript(file_data['content'])
-                    print(f"Successfully processed file: {file_data['filename']}")
+                    data = json.loads(msg.value().decode('utf-8'))
+                    
+                    if msg.topic() == 'transcript_uploads':
+                        print(f"Processing PDF file: {data['filename']}")
+                        self.process_pdf_transcript(data['content'])
+                        print(f"Successfully processed file: {data['filename']}")
+                    else:  # realtime_transcripts topic
+                        print(f"Processing realtime transcript chunk for session: {data['session_id']}")
+                        self.process_realtime_transcript(data['text_chunk'], data['session_id'])
+                        
                 except Exception as e:
                     print(f"Error processing message: {str(e)}")
                 
