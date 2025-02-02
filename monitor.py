@@ -48,6 +48,7 @@ class TranscriptAnalytics:
     def __init__(self):
         try:
             nltk.download('punkt', quiet=True)
+            nltk.download('punkt_tab', quiet=True)  
             nltk.download('stopwords', quiet=True)
             self.stop_words = set(nltk.corpus.stopwords.words('english'))
         except Exception as e:
@@ -107,28 +108,30 @@ class StreamlitMonitoring:
     def poll_updates(self, timeout=1.0):
         try:
             msg = self.consumer.poll(timeout)
-            
             if msg is None:
                 return None
-                
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:
                     return None
-                print(f"Kafka error: {msg.error()}")
-                return None
-                
+                else:
+                    print(f"Error: {msg.error()}")
+                    return None
+            
             data = json.loads(msg.value().decode('utf-8'))
-            
             if msg.topic() == 'processing_status':
-                status = ProcessingStatus(**data)
-                self.status_updates.append(status)
-                print(f"Received status update: {status}")
-            else:  # transcript_analytics topic
+                status_update = ProcessingStatus(
+                    file_id=data['file_id'],
+                    status=data['status'],
+                    timestamp=data['timestamp'],
+                    details=data['details']
+                )
+                if 'filename' in data['details']:
+                    status_update.filename = data['details']['filename']
+                self.status_updates.append(status_update)
+            else:  # transcript_analytics
                 self.analytics_data.append(data)
-                print(f"Received analytics data: {data}")
-                
-            return msg.topic()
             
+            return msg.topic()
         except Exception as e:
             print(f"Error in poll_updates: {str(e)}")
             return None
@@ -147,26 +150,23 @@ class StreamlitMonitoring:
     def get_analytics_summary(self) -> Dict:
         try:
             if not self.analytics_data:
-                return None
-                
-            total_words = sum(data['word_count'] for data in self.analytics_data)
-            avg_sentiment = sum(data['sentiment_score'] for data in self.analytics_data) / len(self.analytics_data)
+                return {}
+            
+            total_words = sum(d['word_count'] for d in self.analytics_data)
+            avg_sentiment = sum(d['sentiment_score'] for d in self.analytics_data) / len(self.analytics_data)
             
             all_words = {}
-            for data in self.analytics_data:
-                for word, count in data['top_words'].items():
-                    all_words[word] = all_words.get(word, 0) + count
-                    
-            summary = {
+            for d in self.analytics_data:
+                for w, freq in d['top_words'].items():
+                    all_words[w] = all_words.get(w, 0) + freq
+            
+            return {
                 'total_transcripts': len(self.analytics_data),
                 'total_words': total_words,
                 'average_words_per_transcript': total_words / len(self.analytics_data),
                 'overall_sentiment': avg_sentiment,
                 'most_common_words': dict(Counter(all_words).most_common(10))
             }
-            print(f"Generated analytics summary: {summary}")
-            return summary
-            
         except Exception as e:
             print(f"Error in get_analytics_summary: {str(e)}")
-            return None
+            return {}

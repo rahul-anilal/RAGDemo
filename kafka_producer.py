@@ -40,6 +40,7 @@ class TranscriptProducer:
 
             file_content = base64.b64encode(file_obj.read()).decode('utf-8')
             file_data = {
+                'file_id': file_id,
                 'filename': file_obj.name,
                 'content': file_content
             }

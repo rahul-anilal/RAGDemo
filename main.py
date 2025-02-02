@@ -1,3 +1,5 @@
+import os
+import faiss
 import streamlit as st
 import pandas as pd
 from kafka_producer import TranscriptProducer
@@ -5,6 +7,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGener
 from langchain_community.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
+from langchain_community.docstore.in_memory import InMemoryDocstore
 from monitor import StreamlitMonitoring
 
 def get_conversational_chain():
@@ -20,9 +23,34 @@ def get_conversational_chain():
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     return load_qa_chain(model, chain_type="stuff", prompt=prompt)
 
+def ensure_faiss_index():
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    faiss_dir = "faiss_index"
+    test_embedding = embeddings.embed_query("test")
+    dimension = len(test_embedding)
+    if not os.path.exists(faiss_dir):
+        os.makedirs(faiss_dir)
+    try:
+        # If existing index is present, load it
+        return FAISS.load_local(faiss_dir, embeddings, allow_dangerous_deserialization=True)
+    except Exception as e:
+        # Create a new FAISS index with required arguments  
+        index = faiss.IndexFlatL2(dimension)
+        docstore = InMemoryDocstore({})
+        index_to_docstore_id = {}
+        new_db = FAISS(
+            embedding_function=embeddings,
+            index=index,
+            docstore=docstore,
+            index_to_docstore_id=index_to_docstore_id
+        )
+        new_db.save_local(faiss_dir)
+        return new_db
+
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+    # Use the helper to ensure index exists
+    new_db = ensure_faiss_index()
     docs = new_db.similarity_search(user_question)
     response = get_conversational_chain()(
         {"input_documents": docs, "question": user_question},
@@ -69,7 +97,8 @@ def render_status_updates(monitoring, file_ids):
     for filename, file_id in file_ids.items():
         status = monitoring.get_latest_status(file_id)
         if status:
-            with st.sidebar.expander(f"File: {filename}", expanded=True):
+            display_name = status.details.get('filename', filename)  # Prefer details filename
+            with st.sidebar.expander(f"File: {display_name}", expanded=True):
                 st.write(f"Status: {status.status}")
                 if status.details:
                     for key, value in status.details.items():
@@ -99,7 +128,6 @@ def main():
     with st.sidebar:
         st.title("Input Sources")
         
-        # File Upload Section
         st.header("Upload Transcripts")
         pdf_docs = st.file_uploader(
             "Upload Transcript Files",
@@ -109,30 +137,21 @@ def main():
         if st.button("Submit & Process PDFs"):
             producer = TranscriptProducer()
             with st.spinner("Processing..."):
-                for pdf in pdf_docs:
-                    success, file_id = producer.send_transcript(pdf)
-                    if success:
-                        st.session_state.file_ids[pdf.name] = file_id
-                        st.success(f"Successfully sent {pdf.name}")
-                    else:
-                        st.error(f"Failed to process {pdf.name}")
+                if pdf_docs:
+                    for doc in pdf_docs:
+                        success, file_id = producer.send_transcript(doc)
+                        if success:
+                            st.session_state.file_ids[doc.name] = file_id
 
-        # Realtime Transcription Section
         st.header("Realtime Transcription")
         realtime_text = st.text_area("Enter text for realtime processing")
         
         if st.button("Process Realtime Text") and realtime_text:
             producer = TranscriptProducer()
             with st.spinner("Processing..."):
-                session_id = producer.send_realtime_chunk(
-                    realtime_text,
-                    st.session_state.realtime_session_id
-                )
+                session_id = producer.send_realtime_chunk(realtime_text, st.session_state.realtime_session_id)
                 if session_id:
                     st.session_state.realtime_session_id = session_id
-                    st.success("Successfully processed")
-                else:
-                    st.error("Failed to process")
 
     # Main Content Area - Chat Interface
     st.title("LangBot - Personal Assistant 🤖")
@@ -155,6 +174,9 @@ def main():
     update_type = st.session_state.monitoring.poll_updates()
     render_status_updates(st.session_state.monitoring, st.session_state.file_ids)
     render_analytics(st.session_state.monitoring.get_analytics_summary())
+
+    # (Optional) Auto-reset FAISS index each run
+    ensure_faiss_index()
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,20 @@
+tar -xzf kafka-3.9.0-src.tgz
+cd kafka-3.9.0-src.tgz
+
+bin/zookeeper-server-start.sh config/zookeeper.properties
+bin/kafka-server-start.sh config/server.properties
+
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic realtime_transcripts --partitions 1 --replication-factor 1
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic processing_status --partitions 1 --replication-factor 1
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic transcript_analytics --partitions 1 --replication-factor 1
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic transcript_uploads --partitions 1 --replication-factor 1
+
+bin/kafka-server-stop.sh
+bin/zookeeper-server-stop.sh
+
+bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic realtime_transcripts --partitions 1 --replication-factor 1
+bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic processing_status --partitions 1 --replication-factor 1
+bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_analytics --partitions 1 --replication-factor 1
+bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_uploads --partitions 1 --replication-factor 1
+
+bin/kafka-topics.sh --list --bootstrap-server localhost:9092

@@ -12,6 +12,7 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 import time
+import faiss
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -24,9 +25,8 @@ class TranscriptConsumer:
             'auto.offset.reset': 'earliest',
             'socket.timeout.ms': 10000,
             'session.timeout.ms': 60000,
-            'request.timeout.ms': 30000
         })
-        self.topics = ['transcript_uploads', 'realtime_transcripts']
+        self.topics = ['transcript_uploads', 'realtime_transcripts', 'processing_status', 'transcript_analytics']
         self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=10000,
@@ -36,17 +36,31 @@ class TranscriptConsumer:
         self.analytics = TranscriptAnalytics()
         
     def load_or_create_vectorstore(self):
+        faiss_dir = "faiss_index"
+        if not os.path.exists(faiss_dir):
+            os.makedirs(faiss_dir)
         try:
-            return FAISS.load_local("faiss_index", self.embeddings, allow_dangerous_deserialization=True)
+            return FAISS.load_local(faiss_dir, self.embeddings, allow_dangerous_deserialization=True)
         except:
-            return None
-            
-    def process_pdf_transcript(self, file_content, file_id):
+            # Initialize FAISS with required arguments
+            index = faiss.IndexFlatL2(self.embeddings.dimension)
+            docstore = {}
+            index_to_docstore_id = {}
+            new_store = FAISS(
+                embedding_function=self.embeddings,
+                index=index,
+                docstore=docstore,
+                index_to_docstore_id=index_to_docstore_id
+            )
+            new_store.save_local(faiss_dir)
+            return new_store
+                
+    def process_pdf_transcript(self, file_content, file_id, data):
         try:
             self.monitoring.send_status_update(
                 file_id=file_id,
                 status="PROCESSING",
-                details={"stage": "text_extraction"}
+                details={"stage": "text_extraction", 'filename': data['filename']}
             )
             
             # Extract text from PDF
@@ -87,6 +101,16 @@ class TranscriptConsumer:
             )
             raise e
         
+    def extract_text(self, file_content):
+        pdf_data = base64.b64decode(file_content)
+        pdf_reader = PdfReader(BytesIO(pdf_data))
+        all_text = []
+        for page in pdf_reader.pages:
+            text = page.extract_text()
+            if text:
+                all_text.append(text)
+        return "\n".join(all_text)
+        
     def process_realtime_transcript(self, text_chunk, session_id):
         text_chunks = self.text_splitter.split_text(text_chunk)
         vector_store = self.load_or_create_vectorstore()
@@ -125,11 +149,17 @@ class TranscriptConsumer:
                     
                     if msg.topic() == 'transcript_uploads':
                         print(f"Processing PDF file: {data['filename']}")
-                        self.process_pdf_transcript(data['content'], data['file_id'])
+                        self.process_pdf_transcript(data['content'], data['file_id'], data)
                         print(f"Successfully processed file: {data['filename']}")
-                    else:  # realtime_transcripts topic
+                    elif msg.topic() == 'realtime_transcripts':
                         print(f"Processing realtime transcript chunk for session: {data['session_id']}")
                         self.process_realtime_transcript(data['text_chunk'], data['session_id'])
+                    elif msg.topic() == 'processing_status':
+                        # Handle processing status updates if needed
+                        pass
+                    elif msg.topic() == 'transcript_analytics':
+                        # Handle transcript analytics if needed
+                        pass
                         
                 except Exception as e:
                     print(f"Error processing message: {str(e)}")
