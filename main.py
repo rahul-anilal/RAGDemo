@@ -93,19 +93,23 @@ def render_status_updates(monitoring, file_ids):
     if not file_ids:
         st.sidebar.info("No files uploaded yet")
         return
-        
+    
+    st.sidebar.write(f"Total status updates: {len(monitoring.status_updates)}")
     for filename, file_id in file_ids.items():
         status = monitoring.get_latest_status(file_id)
         if status:
             display_name = status.details.get('filename', filename)  # Prefer details filename
             with st.sidebar.expander(f"File: {display_name}", expanded=True):
                 st.write(f"Status: {status.status}")
+                st.json(status.details)  # Show full details
                 if status.details:
                     for key, value in status.details.items():
                         st.write(f"{key.title()}: {value}")
                 st.write(f"Last Updated: {status.timestamp}")
         else:
             st.sidebar.warning(f"No status updates for {filename}")
+            st.sidebar.error(f"Missing status for: {filename}")
+            st.sidebar.write(f"All status updates: {monitoring.status_updates}")
 
 def main():
     st.set_page_config(
@@ -180,3 +184,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    st.rerun()

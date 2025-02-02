@@ -39,30 +39,32 @@ This project introduces an interactive conversational agent, using Large Languag
 ```bash
   pip install -r requirements.txt
 ```
-5. Install docker
+5. Install and setup Kafka
 
 ```bash
-  sudo apt-get install docker
-  sudo apt-get install docker-compose
+  wget https://downloads.apache.org/kafka/3.9.0/kafka-3.9.0-src.tgz
+  tar -xzf kafka-3.9.0-src.tgz
+  cd kafka-3.9.0-src.tgz
+
+  bin/zookeeper-server-start.sh config/zookeeper.properties
+  bin/kafka-server-start.sh config/server.properties
 ```
 
-6. Initialize the docker server
-
-```bash
-docker-compose up -d
-```
-
-7. Check docker status
-
-```bash
-docker ps
-```
-
-5.Acquire an api key through makersuite.google.com and put it in a .env file:
+6. Acquire an api key through makersuite.google.com or Google AI studio and put it in a .env file:
 
 ```bash
   GOOGLE_API_KEY="your_api_key_here"
   LAXIS_API_KEY ="your_api_key_here"
+```
+
+7. Create Kafka topics and stream pipeline
+```bash
+  bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic realtime_transcripts --partitions 1 --replication-factor 1
+  bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic processing_status --partitions 1 --replication-factor 1
+  bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_analytics --partitions 1 --replication-factor 1
+  bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_uploads --partitions 1 --replication-factor 1
+
+  bin/kafka-topics.sh --list --bootstrap-server localhost:9092
 ```
 
 ## Usage
@@ -74,7 +76,7 @@ python consumer_service.py
 
 2. In a paralell terminal, Run the Streamlit app by executing:
 ```bash
-streamlit run app_work.py
+streamlit run main.py
 ```
 
 2. The web app will open in your browser where you can ask questions related to the meet:s

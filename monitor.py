@@ -92,7 +92,8 @@ class StreamlitMonitoring:
         self.consumer = Consumer({
             'bootstrap.servers': bootstrap_servers,
             'group.id': 'streamlit-monitoring-group',
-            'auto.offset.reset': 'latest'
+            'auto.offset.reset': 'earliest',
+            'enable.auto.commit': False
         })
         self.topics = ['processing_status', 'transcript_analytics']
         self.status_updates: List[ProcessingStatus] = []
@@ -109,7 +110,9 @@ class StreamlitMonitoring:
         try:
             msg = self.consumer.poll(timeout)
             if msg is None:
+                print("No new messages")
                 return None
+            print(f"Received raw message: {msg.value()}")
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:
                     return None
@@ -118,6 +121,7 @@ class StreamlitMonitoring:
                     return None
             
             data = json.loads(msg.value().decode('utf-8'))
+            print(f"Processed message from topic {msg.topic()}: {data}")  # Debug log
             if msg.topic() == 'processing_status':
                 status_update = ProcessingStatus(
                     file_id=data['file_id'],
@@ -130,7 +134,7 @@ class StreamlitMonitoring:
                 self.status_updates.append(status_update)
             else:  # transcript_analytics
                 self.analytics_data.append(data)
-            
+            self.consumer.commit()
             return msg.topic()
         except Exception as e:
             print(f"Error in poll_updates: {str(e)}")
@@ -149,6 +153,7 @@ class StreamlitMonitoring:
         
     def get_analytics_summary(self) -> Dict:
         try:
+            print(f"Analytics data count: {len(self.analytics_data)}")  # Debug log
             if not self.analytics_data:
                 return {}
             
