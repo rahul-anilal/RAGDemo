@@ -113,7 +113,7 @@ def render_status_updates(monitoring, file_ids):
 
 def main():
     st.set_page_config(
-        page_title="MEETBOT",
+        page_title="DocumentalAI",
         layout="wide",
         initial_sidebar_state="expanded"
     )
@@ -158,7 +158,7 @@ def main():
                     st.session_state.realtime_session_id = session_id
 
     # Main Content Area - Chat Interface
-    st.title("LangBot - Personal Assistant 🤖")
+    st.title("DocumentalAI - Reads your PDFs and Answers Questions") 
     
     # Chat input at the bottom
     user_question = st.text_input("Ask a question about the PDF files and text you uploaded...")
@@ -171,7 +171,7 @@ def main():
     for chat in reversed(st.session_state.chat_history):
         with st.container():
             st.markdown("**You:** " + chat["question"])
-            st.markdown("**MeetBot:** " + chat["answer"])
+            st.markdown("**DocumentalAI:** " + chat["answer"])
             st.markdown("---")
 
     # Right Sidebar - Status and Analytics

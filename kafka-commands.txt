@@ -12,9 +12,9 @@ bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic transcrip
 bin/kafka-server-stop.sh
 bin/zookeeper-server-stop.sh
 
-bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic realtime_transcripts --partitions 1 --replication-factor 1
-bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic processing_status --partitions 1 --replication-factor 1
-bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_analytics --partitions 1 --replication-factor 1
-bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_uploads --partitions 1 --replication-factor 1
+bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic realtime_transcripts 
+bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic processing_status 
+bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_analytics 
+bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_uploads 
 
 bin/kafka-topics.sh --list --bootstrap-server localhost:9092
