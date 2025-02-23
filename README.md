@@ -59,10 +59,10 @@ This project introduces an interactive conversational agent, using Large Languag
 
 7. Create Kafka topics and stream pipeline
 ```bash
-  bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic realtime_transcripts --partitions 1 --replication-factor 1
-  bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic processing_status --partitions 1 --replication-factor 1
-  bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_analytics --partitions 1 --replication-factor 1
-  bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic transcript_uploads --partitions 1 --replication-factor 1
+  bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic realtime_transcripts --partitions 1 --replication-factor 1
+  bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic processing_status --partitions 1 --replication-factor 1
+  bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic transcript_analytics --partitions 1 --replication-factor 1
+  bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic transcript_uploads --partitions 1 --replication-factor 1
 
   bin/kafka-topics.sh --list --bootstrap-server localhost:9092
 ```
