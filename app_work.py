@@ -31,7 +31,7 @@ def get_pdf_text(pdf_docs):
 
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
-    chunks        = text_splitter.split_text(text)
+    chunks = text_splitter.split_text(text)
     return chunks
 
 def get_vector_store(text_chunks):
@@ -41,7 +41,9 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    Analyze the conversation thoroughly, considering each participant's input, and provide a comprehensive response. If specific details are not available, indicate "Information not found in the context." Avoid guessing or providing inaccurate information. If the required details are not in the meeting context, you may search the internet for factual information.\n\n
+    You are a helpful AI assistant, that helps the developer by generating regression test cases from natural language input. 
+    Analyze the user input thoroughly, which consists of the details of the app's functionality as well as the request and response structures and/or API contracts. 
+    Generate positive, negative, and edge test cases in accordance with the request structure, and their expected output according to the response structure. \n\n
 
     Context:\n {context}?\n
     Question: \n{question}\n
@@ -98,10 +100,10 @@ def gpt_pop_up():
     subprocess.Popen(["streamlit", "run", "query.py"])
 
 def main():
-    st.set_page_config("MEETBOT")
-    st.header("MeetBot - A Solution to ask your questions regarding a Meeting🤖")
+    st.set_page_config("RAGDemo")
+    st.header("Generating test cases from natural langauge input")
 
-    user_question = st.text_input("Ask a Question from the Transcript Files")
+    user_question = st.text_input("Please provide the functionality of the application to be tested, along with the request and response structure and/or API Contracts.")
 
     if user_question:
         user_input(user_question)
